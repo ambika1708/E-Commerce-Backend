@@ -6,13 +6,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.ecommercebackend.dto.RegisterRequest;
 import com.example.ecommercebackend.model.Customer;
 import com.example.ecommercebackend.model.Role;
 import com.example.ecommercebackend.repository.CustomerRepository;
@@ -34,8 +35,12 @@ public class AuthController {
     private AuthenticationManager authenticationManager;
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody Customer customer) {
-        customer.setPassword(passwordEncoder.encode(customer.getPassword()));
+    public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
+        Customer customer = new Customer();
+        customer.setName(request.getName());
+        customer.setEmail(request.getEmail());
+        customer.setPhone(request.getPhone());
+        customer.setPassword(passwordEncoder.encode(request.getPassword()));
         customer.setRole(Role.CUSTOMER);
         customerRepository.save(customer);
         return ResponseEntity.ok("Customer Registered Successfully");
@@ -47,7 +52,7 @@ public class AuthController {
             String email = request.get("email");
             String password = request.get("password");
             
-            Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
             
             Customer customer = customerRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -55,7 +60,7 @@ public class AuthController {
         
             return ResponseEntity.ok(token);
         }
-        catch(Exception e) {
+        catch(AuthenticationException e) {
             return ResponseEntity.status(401).body("Invalid Credentials");
         }
     }
