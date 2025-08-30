@@ -29,11 +29,23 @@ public class CartService {
     @Autowired
     private CustomerRepository customerRepository;
 
+    private CartResponse buildCartResponse(Cart cart) {
+        List<CartProductResponse> cartProductResponses = cart.getItems().stream()
+                                                                        .map(item -> new CartProductResponse(item.getProduct().getId(),
+                                                                                                            item.getProduct().getName(),
+                                                                                                            item.getQuantity(),
+                                                                                                            item.getProduct().getPrice())).toList();
+        
+        CartResponse response = new CartResponse(cart.getId(),cart.getTotalPrice(),cartProductResponses);
+
+        return response;
+    }
+
     public CartResponse addToCart(Long customerId, CartItemRequest request) {
         Customer customer = customerRepository.findById(customerId)
                                               .orElseThrow(() -> new RuntimeException("Customer Not Found"));
         Product product = productRepository.findById(request.getProductId())
-                                           .orElseThrow(() -> new RuntimeException("Product Out of Stock"));
+                                           .orElseThrow(() -> new RuntimeException("Product Not Found"));
         Cart cart = customer.getCart();
         if(cart==null) {
             cart = new Cart();
@@ -61,15 +73,7 @@ public class CartService {
                                           .sum());
         cartRepository.save(cart); 
         
-        List<CartProductResponse> cartProductResponses = cart.getItems().stream()
-                                                                        .map(item -> new CartProductResponse(item.getProduct().getId(),
-                                                                                                            item.getProduct().getName(),
-                                                                                                            item.getQuantity(),
-                                                                                                            item.getProduct().getPrice())).toList(); 
-
-        CartResponse response = new CartResponse(cart.getId(),cart.getTotalPrice(),cartProductResponses);
-
-        return response;
+        return buildCartResponse(cart);
     }
 
     public CartResponse viewCart(Long customerId) {
@@ -77,24 +81,16 @@ public class CartService {
                                               .orElseThrow(() -> new RuntimeException("Customer Not Found"));
 
         Cart cart = customer.getCart();
-        List<CartProductResponse> cartProductResponses = cart.getItems().stream()
-                                                                        .map(item -> new CartProductResponse(item.getProduct().getId(),
-                                                                                                            item.getProduct().getName(),
-                                                                                                            item.getQuantity(),
-                                                                                                            item.getProduct().getPrice())).toList(); 
-
-        CartResponse response = new CartResponse(cart.getId(),cart.getTotalPrice(),cartProductResponses);
-
-        return response;
+        return buildCartResponse(cart);
     }
 
-    public CartResponse removeCart(Long customerId, Long productId) {
+    public CartResponse removeFromCart(Long customerId, Long productId) {
         Customer customer = customerRepository.findById(customerId)
                                               .orElseThrow(() -> new RuntimeException("Customer Not Found"));
         
         Cart cart = customer.getCart();
         if(cart==null) {
-            throw new RuntimeException("Cart is Empty");
+            throw new RuntimeException("Cart is Empty, continue shopping");
         }
         cart.getItems().removeIf(item -> item.getProduct().getId().equals(productId));
         cart.setTotalPrice(cart.getItems().stream()
@@ -102,15 +98,39 @@ public class CartService {
                                           .sum());
 
         cartRepository.save(cart);
-        List<CartProductResponse> cartProductResponses = cart.getItems().stream()
-                                                                        .map(item -> new CartProductResponse(item.getProduct().getId(),
-                                                                                                            item.getProduct().getName(),
-                                                                                                            item.getQuantity(),
-                                                                                                            item.getProduct().getPrice())).toList(); 
+        return buildCartResponse(cart);
+    }
 
-        CartResponse response = new CartResponse(cart.getId(),cart.getTotalPrice(),cartProductResponses);
+    public CartResponse updateCart(Long customerId, CartItemRequest request) {
+        Customer customer = customerRepository.findById(customerId)
+                                              .orElseThrow(() -> new RuntimeException("Customer Not Found"));
+        Cart cart = customer.getCart();
+        if(cart==null) {
+            throw new RuntimeException("Cart is Empty, continue shopping");
+        }
 
-        return response;
+        Optional<CartItem> cartItem = cart.getItems().stream().filter(item -> item.getProduct().getId().equals(request.getProductId()))
+                                                              .findFirst();
+        if(cartItem.isPresent()) {
+            CartItem item = cartItem.get();
+            item.setQuantity(item.getQuantity() + request.getQuantity());
+            if(item.getQuantity()<=0){
+                cart.getItems().remove(item);
+            }
+            else {
+                item.setPrice(item.getQuantity() * item.getProduct().getPrice());
+            }
+        }
+        else {
+            throw new RuntimeException("Product Not Found");
+        }
+
+        cart.setTotalPrice(cart.getItems().stream()
+                                          .mapToDouble(CartItem::getPrice)
+                                          .sum());
+
+        cartRepository.save(cart);
+        return buildCartResponse(cart);
     }
     
 }
