@@ -25,6 +25,7 @@ import com.example.ecommercebackend.repository.CartRepository;
 import com.example.ecommercebackend.repository.CustomerRepository;
 import com.example.ecommercebackend.repository.OrderRepository;
 import com.example.ecommercebackend.util.AuthUtil;
+import com.stripe.exception.StripeException;
 
 @Service
 public class OrderService {
@@ -67,6 +68,10 @@ public class OrderService {
             p.setMethod(order.getPayment().getPaymentMethod().toString());
             p.setStatus(order.getPayment().getPaymentStatus().toString());
             p.setOrderId(order.getId());
+            p.setAmount(order.getPayment().getAmount());
+            p.setCurrency(order.getPayment().getCurrency());
+            p.setPaymentDate(order.getPayment().getPaymentDate());
+            p.setFailureReason(order.getPayment().getFailureReason());
 
             response.setPayment(p);
         }
@@ -110,11 +115,21 @@ public class OrderService {
 
         Order savedOrder = orderRepository.save(order);
 
+        String clientSecret = null;
+        try {
+            clientSecret = paymentService.createPaymentIntent(savedOrder, orderRequest.getCurrency());
+            System.out.println("Stripe Client Secret (for frontend use): " + clientSecret);
+        }
+        catch(StripeException e) {
+            System.out.println(e.getMessage());
+        }
+
         cart.getItems().clear();
         cart.setTotalPrice(0.0);
         cartRepository.save(cart);
 
         OrderResponse response = mapToOrderResponse(savedOrder);
+        response.getPayment().setStripeChargeId(clientSecret);
         return response;
     }
 

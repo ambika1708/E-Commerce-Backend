@@ -5,23 +5,24 @@ import com.example.ecommercebackend.model.PaymentMethod;
 public class OrderRequest {
     private PaymentMethod paymentMethod;
     private String shippingAddress;
-    private String couponCode;
-    public PaymentMethod getPaymentMethod() {
-        return paymentMethod;
-    }
-    public void setPaymentMethod(PaymentMethod paymentMethod) {
-        this.paymentMethod = paymentMethod;
-    }
+    private String currency;
+    
     public String getShippingAddress() {
         return shippingAddress;
     }
     public void setShippingAddress(String shippingAddress) {
         this.shippingAddress = shippingAddress;
     }
-    public String getCouponCode() {
-        return couponCode;
+    public PaymentMethod getPaymentMethod() {
+        return paymentMethod;
     }
-    public void setCouponCode(String couponCode) {
-        this.couponCode = couponCode;
+    public void setPaymentMethod(PaymentMethod paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+    public String getCurrency() {
+        return currency;
+    }
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 }
